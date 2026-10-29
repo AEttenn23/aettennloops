@@ -7,7 +7,9 @@
 <title>Muestra de trabajo · MixTheVid</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- las fuentes se cargan sin bloquear: la página se pinta ya y luego cambian -->
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"></noscript>
 <style>
   :root {
     --bg: #0a0a0b;
@@ -215,7 +217,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .ch:hover { transform: translateY(-2px); }
-  .ch.loading { opacity: .35; pointer-events: none; }
+  .ch.loading { opacity: .45; pointer-events: none; }
   .ch:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
   .ch .tally { height: 4px; background: #2a2a2f; transition: background .08s; }
   .ch canvas {
@@ -528,7 +530,7 @@
   // Los vídeos salen de "propuesta loops/web", que genera optimizar_videos.py a partir
   // de los originales. Tras cambiar un clip: ejecuta ese script y sube este número,
   // para que el navegador no siga mostrando la copia antigua que tiene guardada.
-  const VIDEO_VERSION = 8;
+  const VIDEO_VERSION = 9;
 
   const PROPOSALS = {
     v1: {
@@ -556,19 +558,30 @@
   const LIGHT = matchMedia('(pointer: coarse)').matches;
   const videoUrl = src =>
     `${encodeURI(LIGHT ? src.replace('/web/', '/web/movil/') : src)}?v=${VIDEO_VERSION}`;
+  // Primer fotograma de cada clip, muy ligero: se ve al instante mientras carga.
+  const posterUrl = src =>
+    `${encodeURI(src.replace('/web/', '/web/portada/').replace(/\.mp4$/, '.jpg'))}?v=${VIDEO_VERSION}`;
 
   // Cada clip se descarga entero antes de usarlo, así nunca se queda parado esperando
-  // datos a mitad de reproducción. Se bajan de uno en uno para que el primero esté
-  // listo cuanto antes. Si la descarga falla, se reproduce directamente del servidor.
-  let queue = Promise.resolve();
-  function fetchClip(src) {
+  // datos a mitad de reproducción. Se bajan de uno en uno para que cada uno llegue
+  // cuanto antes, y primero los de la propuesta que está en pantalla.
+  // Si la descarga falla, ese clip se reproduce directamente del servidor.
+  const pending = [];
+  let busy = false, visibleKnown = false;  // no se empieza hasta saber qué se ve
+  function fetchClip(src, isActive) {
+    return new Promise(resolve => { pending.push({ src, isActive, resolve }); pump(); });
+  }
+  function pump() {
+    if (busy || !visibleKnown || !pending.length) return;
+    const k = Math.max(0, pending.findIndex(job => job.isActive()));
+    const { src, resolve } = pending.splice(k, 1)[0];
     const url = videoUrl(src);
-    queue = queue
-      .then(() => fetch(url))
+    busy = true;
+    fetch(url)
       .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
-      .then(b => URL.createObjectURL(b))
-      .catch(() => url);
-    return queue;
+      .then(b => URL.createObjectURL(b), () => url)
+      .then(resolve)
+      .finally(() => { busy = false; pump(); });
   }
 
   const pad = n => String(n).padStart(2, '0');
@@ -612,6 +625,7 @@
     // Con filtros (sync) se reproducen todos a la vez para que sigan sincronizados.
     const vids = srcs.map(src => {
       const v = document.createElement('video');
+      v.poster = posterUrl(src);
       v.muted = true; v.loop = true; v.playsInline = true;
       v.preload = 'auto';
       v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
@@ -637,21 +651,36 @@
     const canvases = chans.map(c => c.querySelector('canvas'));
     const ctxs = canvases.map(c => c.getContext('2d'));
 
+    const posters = srcs.map(src => Object.assign(new Image(), { src: posterUrl(src) }));
+
+    // Al cambiar de tamaño el lienzo se borra, así que todas las miniaturas se repintan.
     new ResizeObserver(() => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvases.forEach(c => {
         c.width = Math.max(1, Math.round(c.clientWidth * dpr));
         c.height = Math.max(1, Math.round(c.clientHeight * dpr));
       });
+      vids.forEach(v => { v._thumb = null; });
     }).observe(deck);
 
-    function drawCover(ctx, v) {
+    function drawCover(ctx, img, iw, ih) {
       const { width: w, height: h } = ctx.canvas;
-      const vw = v.videoWidth, vh = v.videoHeight;
-      if (!vw || v.readyState < 2 || (v.paused && v._drawn)) return;
-      v._drawn = true;
-      const s = Math.max(w / vw, h / vh), dw = vw * s, dh = vh * s;
-      ctx.drawImage(v, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      const s = Math.max(w / iw, h / ih), dw = iw * s, dh = ih * s;
+      ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    }
+
+    // Miniatura: el vídeo si ya tiene imagen (los pausados solo se pintan una vez);
+    // si no, su portada.
+    function drawThumb(k) {
+      const v = vids[k], p = posters[k];
+      if (v.videoWidth && v.readyState >= 2) {
+        if (v.paused && v._thumb === 'video') return;
+        v._thumb = 'video';
+        drawCover(ctxs[k], v, v.videoWidth, v.videoHeight);
+      } else if (!v._thumb && p.complete && p.naturalWidth) {
+        v._thumb = 'poster';
+        drawCover(ctxs[k], p, p.naturalWidth, p.naturalHeight);
+      }
     }
 
     // ---------- estado ----------
@@ -746,7 +775,11 @@
 
     function tick(now) {
       if (!active) return;
-      if (!started) { ui.next.textContent = 'Cargando…'; return; }
+      if (!started) {
+        ui.next.textContent = 'Cargando…';
+        vids.forEach((_, k) => drawThumb(k));
+        return;
+      }
       if (pinned === null && now >= nextAt) {
         cut(randomOther(), now);
         schedule(now);
@@ -764,7 +797,7 @@
       const ms = now - t0;
       ui.tc.textContent = `${pad(Math.floor(ms / 60000))}:${pad(Math.floor(ms / 1000) % 60)}:${pad(Math.floor(ms / 40) % 25)}`;
 
-      if (frame++ % 2 === 0) vids.forEach((v, k) => drawCover(ctxs[k], v));
+      if (frame++ % 2 === 0) vids.forEach((_, k) => drawThumb(k));
       if (sync && frame % 15 === 0) syncVideos();
     }
 
@@ -794,15 +827,16 @@
       }
     }
 
-    // Arranca con el primer clip descargado; con filtros espera a tenerlos todos,
-    // porque se reproducen a la vez.
+    // Mientras carga se ve la portada del primer clip. Arranca con el primer clip
+    // descargado; con filtros espera a tenerlos todos, porque se reproducen a la vez.
+    cut(sync ? Math.floor(Math.random() * srcs.length) : 0, performance.now());
     function start(i) {
       started = true;
-      cut(sync ? Math.floor(Math.random() * srcs.length) : i, performance.now());
+      if (!sync) cut(i, performance.now());
       schedule(performance.now());
       if (active) playAll().catch(checkBlocked);
     }
-    srcs.forEach((src, i) => fetchClip(src).then(url => {
+    srcs.forEach((src, i) => fetchClip(src, () => active).then(url => {
       vids[i].src = url;
       ready[i] = true;
       chans[i].classList.remove('loading');
@@ -876,6 +910,7 @@
       m.setActive(r > 0);
       if (r > best) { best = r; focused = m; }
     });
+    if (!visibleKnown) { visibleKnown = true; pump(); }
   }, { threshold: [0, .1, .25, .5, .75, 1] });
   mixers.forEach(m => io.observe(m.stage));
   mixers.forEach(m => m.section.addEventListener('pointerdown', () => { focused = m; }));
