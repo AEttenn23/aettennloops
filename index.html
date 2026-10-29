@@ -521,7 +521,7 @@
         <div class="kicker">Ejemplo 02</div>
         <h2>Un vídeo, <span>varios filtros</span></h2>
       </div>
-      <p>El mismo clip con distintos tratamientos y cortes más rápidos, de 0,2 a 1,5 s. Todas las versiones se reproducen a la vez y sincronizadas, aunque no estén activas, así que cada corte cambia el filtro sin perder el movimiento.</p>
+      <p>El mismo clip con distintos tratamientos y cortes muy rápidos, de 0,15 a 0,6 s, que de vez en cuando frenan y aguantan 1,5 a 3 s. Todas las versiones se reproducen a la vez y sincronizadas, aunque no estén activas, así que cada corte cambia el filtro sin perder el movimiento.</p>
     </div>
   </section>
 
@@ -567,7 +567,9 @@
     },
     v2: {
       sync: true,
-      minCut: 200, maxCut: 1500,
+      minCut: 150, maxCut: 600,
+      // de vez en cuando frena: uno de cada seis cortes aguanta bastante más
+      holdChance: 1 / 6, minHold: 1500, maxHold: 3000,
       srcs: [
         'propuesta loops/web/v2/vasca 1.mp4',
         'propuesta loops/web/v2/vasca2.mp4',
@@ -648,7 +650,7 @@
     </div>
 `;
 
-  function createMixer(section, { srcs, sync = false, minCut = 500, maxCut = 4000 }) {
+  function createMixer(section, { srcs, sync = false, minCut = 500, maxCut = 4000, holdChance = 0, minHold = 0, maxHold = 0 }) {
     section.insertAdjacentHTML('beforeend', TEMPLATE);
     const el = name => section.querySelector(`[data-el="${name}"]`);
     const stage = section.querySelector('.stage');
@@ -758,7 +760,9 @@
     }
 
     function schedule(now) {
-      segDur = minCut + Math.random() * (maxCut - minCut);
+      const hold = Math.random() < holdChance;
+      segDur = hold ? minHold + Math.random() * (maxHold - minHold)
+                    : minCut + Math.random() * (maxCut - minCut);
       nextAt = now + segDur;
     }
 
