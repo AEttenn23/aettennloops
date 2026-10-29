@@ -174,6 +174,7 @@
     transform: scaleX(var(--p, 1));
   }
   .stage.solo .meter i { background: var(--solo); }
+  .stage.loading .meter { height: 5px; }
 
   .gate {
     position: absolute; inset: 0;
@@ -217,7 +218,29 @@
     -webkit-tap-highlight-color: transparent;
   }
   .ch:hover { transform: translateY(-2px); }
-  .ch.loading { opacity: .45; pointer-events: none; }
+  .ch.loading { pointer-events: none; }
+  /* progreso de descarga: la miniatura se va llenando de abajo arriba */
+  .ch .fill, .ch .pct {
+    position: absolute; left: 0; right: 0; top: 4px;
+    aspect-ratio: var(--ar);
+    pointer-events: none;
+    transition: opacity .5s;
+  }
+  .ch .fill {
+    --h: calc(var(--load, 0) * 100%);
+    background: linear-gradient(to top,
+      rgba(24, 196, 228, .5) calc(var(--h) - 2px),
+      var(--live) calc(var(--h) - 2px) var(--h),
+      rgba(0, 0, 0, .45) var(--h));
+  }
+  .ch .pct {
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    color: var(--ink);
+    text-shadow: 0 1px 6px #000;
+  }
+  .ch:not(.loading) .fill,
+  .ch:not(.loading) .pct { opacity: 0; }
   .ch:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
   .ch .tally { height: 4px; background: #2a2a2f; transition: background .08s; }
   .ch canvas {
@@ -568,20 +591,36 @@
   // Si la descarga falla, ese clip se reproduce directamente del servidor.
   const pending = [];
   let busy = false, visibleKnown = false;  // no se empieza hasta saber qué se ve
-  function fetchClip(src, isActive) {
-    return new Promise(resolve => { pending.push({ src, isActive, resolve }); pump(); });
+  function fetchClip(src, isActive, onProgress) {
+    return new Promise(resolve => { pending.push({ src, isActive, onProgress, resolve }); pump(); });
   }
   function pump() {
     if (busy || !visibleKnown || !pending.length) return;
     const k = Math.max(0, pending.findIndex(job => job.isActive()));
-    const { src, resolve } = pending.splice(k, 1)[0];
+    const { src, onProgress, resolve } = pending.splice(k, 1)[0];
     const url = videoUrl(src);
     busy = true;
     fetch(url)
-      .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      .then(r => { if (!r.ok) throw new Error(r.status); return readWithProgress(r, onProgress); })
       .then(b => URL.createObjectURL(b), () => url)
       .then(resolve)
       .finally(() => { busy = false; pump(); });
+  }
+  // Lee la descarga a trozos para ir avisando de cuánto lleva (de 0 a 1).
+  async function readWithProgress(r, onProgress) {
+    const total = Number(r.headers.get('Content-Length'));
+    if (!total || !r.body) return r.blob();
+    const reader = r.body.getReader();
+    const chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      got += value.length;
+      onProgress(Math.min(1, got / total));
+    }
+    return new Blob(chunks, { type: r.headers.get('Content-Type') || 'video/mp4' });
   }
 
   const pad = n => String(n).padStart(2, '0');
@@ -642,13 +681,15 @@
       b.className = 'ch loading'; b.type = 'button';
       b.setAttribute('aria-pressed', 'false');
       b.setAttribute('aria-label', `Clip ${pad(i + 1)}`);
-      b.innerHTML = `<div class="tally"></div><canvas></canvas><span class="badge">SOLO</span>
+      b.innerHTML = `<div class="tally"></div><canvas></canvas>
+        <div class="fill"></div><span class="pct">0 %</span><span class="badge">SOLO</span>
         <div class="meta"><span class="n">${pad(i + 1)}</span></div>`;
       b.addEventListener('click', () => pin(i));
       deck.appendChild(b);
       return b;
     });
     const canvases = chans.map(c => c.querySelector('canvas'));
+    const pcts = chans.map(c => c.querySelector('.pct'));
     const ctxs = canvases.map(c => c.getContext('2d'));
 
     const posters = srcs.map(src => Object.assign(new Image(), { src: posterUrl(src) }));
@@ -687,7 +728,14 @@
     let cur = -1, pinned = null, nextAt = 0, segDur = 1;
     let active = false, started = false, frame = 0;
     const ready = srcs.map(() => false);
+    const loaded = srcs.map(() => 0);  // cuánto lleva descargado cada clip, de 0 a 1
     const t0 = performance.now();
+
+    function progress(i, p) {
+      loaded[i] = p;
+      chans[i].style.setProperty('--load', p.toFixed(3));
+      pcts[i].textContent = `${Math.floor(p * 100)} %`;
+    }
 
     function flash() {
       stage.classList.remove('flash');
@@ -776,7 +824,11 @@
     function tick(now) {
       if (!active) return;
       if (!started) {
-        ui.next.textContent = 'Cargando…';
+        // La barra de la pantalla muestra lo que falta para arrancar: el primer clip,
+        // o los tres juntos en la propuesta con filtros.
+        const p = sync ? loaded.reduce((a, b) => a + b, 0) / srcs.length : loaded[cur];
+        ui.meter.style.setProperty('--p', p.toFixed(3));
+        ui.next.textContent = `Cargando ${Math.floor(p * 100)} %`;
         vids.forEach((_, k) => drawThumb(k));
         return;
       }
@@ -830,15 +882,18 @@
     // Mientras carga se ve la portada del primer clip. Arranca con el primer clip
     // descargado; con filtros espera a tenerlos todos, porque se reproducen a la vez.
     cut(sync ? Math.floor(Math.random() * srcs.length) : 0, performance.now());
+    stage.classList.add('loading');
     function start(i) {
       started = true;
+      stage.classList.remove('loading');
       if (!sync) cut(i, performance.now());
       schedule(performance.now());
       if (active) playAll().catch(checkBlocked);
     }
-    srcs.forEach((src, i) => fetchClip(src, () => active).then(url => {
+    srcs.forEach((src, i) => fetchClip(src, () => active, p => progress(i, p)).then(url => {
       vids[i].src = url;
       ready[i] = true;
+      progress(i, 1);
       chans[i].classList.remove('loading');
       if (!started && (!sync || ready.every(Boolean))) start(i);
     }));
