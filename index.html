@@ -629,7 +629,7 @@
     <div class="stage" aria-label="Resultado en directo">
       <div class="hud">
         <div class="hud-row">
-          <span class="tag"><span class="dot"></span><span data-el="mode">En directo</span></span>
+          <span class="tag"><span class="dot"></span><span data-el="mode">Desfijado</span></span>
           <span class="tag tc hide-sm" data-el="tc">00:00:00</span>
         </div>
         <div class="hud-row bottom">
@@ -771,7 +771,7 @@
     function renderMode() {
       const solo = pinned !== null;
       stage.classList.toggle('solo', solo);
-      ui.mode.textContent = solo ? 'Solo' : 'En directo';
+      ui.mode.textContent = solo ? 'Fijado' : 'Desfijado';
       ui.auto.classList.toggle('on', !solo);
       chans.forEach((c, k) => {
         c.classList.toggle('pinned', k === pinned);
