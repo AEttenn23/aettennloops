@@ -215,6 +215,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .ch:hover { transform: translateY(-2px); }
+  .ch.loading { opacity: .35; pointer-events: none; }
   .ch:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
   .ch .tally { height: 4px; background: #2a2a2f; transition: background .08s; }
   .ch canvas {
@@ -310,18 +311,13 @@
     padding: 1px 5px; color: var(--ink);
   }
 
-  /* pantalla completa */
-  .stage:fullscreen { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
-  .stage:fullscreen video { object-fit: contain; }
-  .stage:-webkit-full-screen { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
-  .stage:-webkit-full-screen video { object-fit: contain; }
-
-  /* pantalla completa simulada, para navegadores que no la permiten (iPhone) */
+  /* pantalla completa: la pantalla ocupa todo lo visible, sea cual sea la forma del móvil */
   .stage.fake-fs {
     position: fixed;
     z-index: 100;
     top: 0; left: 0;
     width: 100vw;
+    width: 100dvw;
     height: 100vh;
     height: 100dvh;
     margin: 0;
@@ -336,6 +332,7 @@
       width: 100vh;
       width: 100dvh;
       height: 100vw;
+      height: 100dvw;
       transform: translate(-50%, -50%) rotate(90deg);
     }
   }
@@ -355,12 +352,8 @@
     font: inherit; font-size: 18px;
     cursor: pointer;
   }
-  .stage:fullscreen .fs-close,
   .stage.fake-fs .fs-close { display: grid; }
-  .stage:-webkit-full-screen .fs-close { display: grid; }
-  .stage:fullscreen [data-el="tc"],
   .stage.fake-fs [data-el="tc"] { margin-right: 48px; }
-  .stage:-webkit-full-screen [data-el="tc"] { margin-right: 48px; }
 
   /* ---------- aviso de material de muestra ---------- */
   .note {
@@ -535,7 +528,7 @@
   // Los vídeos salen de "propuesta loops/web", que genera optimizar_videos.py a partir
   // de los originales. Tras cambiar un clip: ejecuta ese script y sube este número,
   // para que el navegador no siga mostrando la copia antigua que tiene guardada.
-  const VIDEO_VERSION = 7;
+  const VIDEO_VERSION = 8;
 
   const PROPOSALS = {
     v1: {
@@ -558,6 +551,25 @@
     },
   };
   const SOFT_DRIFT = 0.03, HARD_DRIFT = 1;
+
+  // En móviles se usan las versiones ligeras ("propuesta loops/web/movil").
+  const LIGHT = matchMedia('(pointer: coarse)').matches;
+  const videoUrl = src =>
+    `${encodeURI(LIGHT ? src.replace('/web/', '/web/movil/') : src)}?v=${VIDEO_VERSION}`;
+
+  // Cada clip se descarga entero antes de usarlo, así nunca se queda parado esperando
+  // datos a mitad de reproducción. Se bajan de uno en uno para que el primero esté
+  // listo cuanto antes. Si la descarga falla, se reproduce directamente del servidor.
+  let queue = Promise.resolve();
+  function fetchClip(src) {
+    const url = videoUrl(src);
+    queue = queue
+      .then(() => fetch(url))
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      .then(b => URL.createObjectURL(b))
+      .catch(() => url);
+    return queue;
+  }
 
   const pad = n => String(n).padStart(2, '0');
 
@@ -600,7 +612,6 @@
     // Con filtros (sync) se reproducen todos a la vez para que sigan sincronizados.
     const vids = srcs.map(src => {
       const v = document.createElement('video');
-      v.src = `${encodeURI(src)}?v=${VIDEO_VERSION}`;
       v.muted = true; v.loop = true; v.playsInline = true;
       v.preload = 'auto';
       v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
@@ -614,7 +625,7 @@
 
     const chans = srcs.map((_, i) => {
       const b = document.createElement('button');
-      b.className = 'ch'; b.type = 'button';
+      b.className = 'ch loading'; b.type = 'button';
       b.setAttribute('aria-pressed', 'false');
       b.setAttribute('aria-label', `Clip ${pad(i + 1)}`);
       b.innerHTML = `<div class="tally"></div><canvas></canvas><span class="badge">SOLO</span>
@@ -645,7 +656,8 @@
 
     // ---------- estado ----------
     let cur = -1, pinned = null, nextAt = 0, segDur = 1;
-    let active = false, frame = 0;
+    let active = false, started = false, frame = 0;
+    const ready = srcs.map(() => false);
     const t0 = performance.now();
 
     function flash() {
@@ -673,10 +685,10 @@
       nextAt = now + segDur;
     }
 
+    // Solo entre los clips ya descargados.
     function randomOther() {
-      let i;
-      do { i = Math.floor(Math.random() * srcs.length); } while (i === cur);
-      return i;
+      const options = srcs.map((_, k) => k).filter(k => ready[k] && k !== cur);
+      return options.length ? options[Math.floor(Math.random() * options.length)] : cur;
     }
 
     function renderMode() {
@@ -691,7 +703,7 @@
     }
 
     function pin(i) {
-      if (i < 0 || i >= srcs.length) return;
+      if (i < 0 || i >= srcs.length || !ready[i]) return;
       if (pinned === i) return unpin();
       pinned = i;
       cut(i, performance.now());
@@ -734,6 +746,7 @@
 
     function tick(now) {
       if (!active) return;
+      if (!started) { ui.next.textContent = 'Cargando…'; return; }
       if (pinned === null && now >= nextAt) {
         cut(randomOther(), now);
         schedule(now);
@@ -756,7 +769,7 @@
     }
 
     // ---------- reproducción ----------
-    const playing = () => sync ? vids : [vids[cur]];
+    const playing = () => sync ? vids : cur >= 0 ? [vids[cur]] : [];
     const playAll = () => Promise.all(playing().map(v => v.play()));
     // Solo pedimos un toque si el navegador ha bloqueado de verdad la reproducción
     // (p. ej. modo ahorro de batería en iPhone).
@@ -773,7 +786,7 @@
       if (on === active) return;
       active = on;
       if (on) {
-        playAll().catch(checkBlocked);
+        if (started) playAll().catch(checkBlocked);
         schedule(performance.now());
       } else {
         vids.forEach(v => v.pause());
@@ -781,15 +794,29 @@
       }
     }
 
-    cut(Math.floor(Math.random() * srcs.length), performance.now());
+    // Arranca con el primer clip descargado; con filtros espera a tenerlos todos,
+    // porque se reproducen a la vez.
+    function start(i) {
+      started = true;
+      cut(sync ? Math.floor(Math.random() * srcs.length) : i, performance.now());
+      schedule(performance.now());
+      if (active) playAll().catch(checkBlocked);
+    }
+    srcs.forEach((src, i) => fetchClip(src).then(url => {
+      vids[i].src = url;
+      ready[i] = true;
+      chans[i].classList.remove('loading');
+      if (!started && (!sync || ready.every(Boolean))) start(i);
+    }));
     renderMode();
 
     // ---------- controles ----------
     ui.auto.addEventListener('click', unpin);
 
-    // Pantalla completa: se intenta la nativa (y en Android se gira a horizontal).
-    // Si el navegador no la concede —iPhone, navegadores integrados— se simula con CSS,
-    // girando el vídeo si el móvil está en vertical.
+    // Pantalla completa: la pantalla se fija con CSS ocupando todo (girada si el móvil
+    // está en vertical), y además se pide la pantalla completa del navegador para
+    // esconder sus barras y, en Android, girar a horizontal. Así se ve igual en
+    // cualquier móvil, también en los que no la conceden (iPhone).
     const closeBtn = document.createElement('button');
     closeBtn.className = 'fs-close'; closeBtn.type = 'button';
     closeBtn.setAttribute('aria-label', 'Salir de pantalla completa');
@@ -799,41 +826,36 @@
 
     const nativeFsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
     const isFakeFs = () => stage.classList.contains('fake-fs');
-    const isFs = () => nativeFsEl() === stage || isFakeFs();
 
     function fakeFs(on) {
       stage.classList.toggle('fake-fs', on);
       document.body.classList.toggle('fs-lock', on);
     }
 
-    function lockLandscape() {
-      try { screen.orientation?.lock?.('landscape').catch(() => {}); } catch (_) {}
-    }
-
     function enterFs() {
-      const req = stage.requestFullscreen || stage.webkitRequestFullscreen;
-      if (!req) return fakeFs(true);
-      let settled = false;
-      const fallback = () => {
-        if (settled) return;
-        settled = true;
-        if (nativeFsEl() !== stage) fakeFs(true);
-      };
-      let p;
-      try { p = req.call(stage); } catch (_) { return fallback(); }
-      if (p && p.then) p.then(() => { settled = true; fakeFs(false); lockLandscape(); }, fallback);
-      setTimeout(fallback, 500);
+      fakeFs(true);
+      const root = document.documentElement;
+      const req = root.requestFullscreen || root.webkitRequestFullscreen;
+      try {
+        const p = req && req.call(root);
+        if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {}), () => {});
+      } catch (_) {}
     }
 
     function exitFs() {
-      if (isFakeFs()) fakeFs(false);
-      if (nativeFsEl() === stage) {
+      fakeFs(false);
+      if (nativeFsEl()) {
         try { screen.orientation?.unlock?.(); } catch (_) {}
         (document.exitFullscreen || document.webkitExitFullscreen).call(document);
       }
     }
 
-    const toggleFs = () => (isFs() ? exitFs() : enterFs());
+    // Si se sale con el botón atrás o Esc del navegador, también se cierra la nuestra.
+    const onFsChange = () => { if (!nativeFsEl() && isFakeFs()) fakeFs(false); };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+
+    const toggleFs = () => (isFakeFs() ? exitFs() : enterFs());
     ui.fs.addEventListener('click', toggleFs);
 
     return { section, stage, tick, setActive, pin, unpin, toggleFs, exitFs, isFakeFs };
