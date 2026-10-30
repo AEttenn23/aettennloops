@@ -4,21 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0b">
-<title>Muestra de trabajo · MixTheVid</title>
+<title>Clips · MixTheVid</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- las fuentes se cargan sin bloquear: la página se pinta ya y luego cambian -->
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"></noscript>
 <style>
   :root {
     --bg: #0a0a0b;
-    --panel: #131315;
     --line: #26262b;
     --ink: #ece6da;
     --mute: #8a857c;
     --live: #18c4e4;
-    --solo: #ffb400;
     --ar: 16 / 9;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -27,158 +25,82 @@
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 13px;
     line-height: 1.55;
-    min-height: 100vh;
-    min-height: 100svh;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
-  }
-  /* grano de película */
-  body::before {
-    content: "";
-    position: fixed; inset: 0;
-    pointer-events: none; z-index: 50;
-    opacity: .07;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
 
   .wrap {
     max-width: 1180px;
     margin: 0 auto;
-    padding: clamp(18px, 3.5vw, 40px) 16px 40px;
+    padding: clamp(16px, 3vw, 40px) 16px 32px;
     /* en horizontal, que el contenido no quede bajo la muesca del móvil */
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
   }
 
-  /* ---------- cabecera ---------- */
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 14px 32px;
-    flex-wrap: wrap;
-    margin-bottom: clamp(16px, 3vw, 28px);
+  /* ---------- galería: el primero grande, los otros cuatro en dos columnas ---------- */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(10px, 2vw, 20px);
   }
-  .kicker {
-    font-size: 11px;
-    letter-spacing: .2em;
-    text-transform: uppercase;
-    color: var(--mute);
-  }
-  h1 {
-    font-family: 'Big Shoulders Display', sans-serif;
-    font-weight: 900;
-    font-size: clamp(46px, 9vw, 104px);
-    line-height: .84;
-    text-transform: uppercase;
-    margin-top: 8px;
-  }
-  h1 em { font-style: normal; color: var(--live); }
-  .intro { max-width: 40ch; color: var(--mute); }
-  .intro b { color: var(--ink); font-weight: 600; }
-
-  /* ---------- pantalla principal ---------- */
-  .stage {
+  .clip:first-child { grid-column: 1 / -1; }
+  .screen {
     position: relative;
-    margin: 0 auto;
-    width: min(100%, calc(70vh * (var(--ar))));
-    width: min(100%, calc(70svh * (var(--ar))));
     aspect-ratio: var(--ar);
     background: #000;
     border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 0 0 1px var(--line), 0 40px 90px -40px rgba(24, 196, 228, .35);
-    isolation: isolate;
+    box-shadow: 0 0 0 1px var(--line), 0 40px 90px -50px rgba(24, 196, 228, .35);
+    cursor: zoom-in;
+    -webkit-tap-highlight-color: transparent;
   }
-  .stage video {
+  .screen:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .screen video {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
     object-fit: cover;
-    opacity: 0;
   }
-  .stage video.live { opacity: 1; }
-  .stage::after {
-    content: "";
-    position: absolute; inset: 0;
-    background: #fff;
-    opacity: 0;
-    pointer-events: none;
+  .clip-n {
+    position: absolute;
+    left: clamp(10px, 2vw, 18px);
+    bottom: clamp(8px, 1.6vw, 14px);
     z-index: 2;
-  }
-  .stage.flash::after { animation: flash .2s ease-out; }
-  @keyframes flash { from { opacity: .16; } to { opacity: 0; } }
-
-  .hud {
-    position: absolute; inset: 0;
-    z-index: 3;
-    pointer-events: none;
-    padding: clamp(10px, 2vw, 18px);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    font-size: 11px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-  }
-  .hud-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .hud-row.bottom { align-items: flex-end; }
-  .tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(10, 10, 11, .6);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-    padding: 6px 10px;
-    border-radius: 2px;
-    white-space: nowrap;
-  }
-  .dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--live);
-    box-shadow: 0 0 10px var(--live);
-    animation: blink 1.2s steps(2, jump-none) infinite;
-  }
-  .stage.solo .dot { background: var(--solo); box-shadow: 0 0 10px var(--solo); animation: none; }
-  @keyframes blink { 50% { opacity: .25; } }
-  .tc { font-variant-numeric: tabular-nums; }
-  .bignum {
     font-family: 'Big Shoulders Display', sans-serif;
     font-weight: 900;
-    font-size: clamp(54px, 10vw, 132px);
-    line-height: .78;
-    letter-spacing: 0;
+    font-size: clamp(36px, 6vw, 72px);
+    line-height: .8;
     color: #fff;
     mix-blend-mode: difference;
+    pointer-events: none;
   }
-  .bignum small {
-    display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: .2em;
-    margin-top: 10px;
+  .clip:first-child .clip-n { font-size: clamp(54px, 10vw, 132px); }
+
+  /* progreso de descarga: el clip se va llenando de abajo arriba */
+  .fill, .pct {
+    position: absolute; inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    transition: opacity .5s;
   }
-  .meter {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    height: 3px;
-    z-index: 3;
-    background: rgba(255, 255, 255, .12);
+  .fill {
+    --h: calc(var(--load, 0) * 100%);
+    background: linear-gradient(to top,
+      rgba(24, 196, 228, .35) calc(var(--h) - 2px),
+      var(--live) calc(var(--h) - 2px) var(--h),
+      rgba(0, 0, 0, .55) var(--h));
   }
-  .meter i {
-    display: block;
-    height: 100%;
-    background: var(--live);
-    transform-origin: left;
-    transform: scaleX(var(--p, 1));
+  .pct {
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 600; letter-spacing: .08em;
+    text-shadow: 0 1px 6px #000;
   }
-  .stage.solo .meter i { background: var(--solo); }
-  .stage.loading .meter { height: 5px; }
+  .clip:not(.loading) .fill,
+  .clip:not(.loading) .pct { opacity: 0; }
 
   .gate {
     position: absolute; inset: 0;
-    z-index: 4;
+    z-index: 3;
     display: none;
     place-items: center;
     background: rgba(0, 0, 0, .55);
@@ -188,156 +110,13 @@
   .gate.show { display: grid; }
   .gate span {
     font-family: 'Big Shoulders Display', sans-serif;
-    font-weight: 900; font-size: 32px; text-transform: uppercase;
-    padding: 10px 22px;
+    font-weight: 900; font-size: 28px; text-transform: uppercase;
+    padding: 8px 20px;
     background: var(--live); color: #000;
   }
 
-  /* ---------- mesa de canales ---------- */
-  .deck {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: clamp(6px, 1.4vw, 14px);
-    margin: clamp(14px, 2.5vw, 22px) auto 0;
-    width: min(100%, 920px);
-  }
-  .ch {
-    appearance: none;
-    border: 0;
-    background: var(--panel);
-    color: inherit;
-    font: inherit;
-    padding: 0;
-    cursor: pointer;
-    text-align: left;
-    border-radius: 3px;
-    overflow: hidden;
-    position: relative;
-    box-shadow: 0 0 0 1px var(--line);
-    transition: transform .15s ease, box-shadow .15s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .ch:hover { transform: translateY(-2px); }
-  .ch.loading { pointer-events: none; }
-  /* progreso de descarga: la miniatura se va llenando de abajo arriba */
-  .ch .fill, .ch .pct {
-    position: absolute; left: 0; right: 0; top: 4px;
-    aspect-ratio: var(--ar);
-    pointer-events: none;
-    transition: opacity .5s;
-  }
-  .ch .fill {
-    --h: calc(var(--load, 0) * 100%);
-    background: linear-gradient(to top,
-      rgba(24, 196, 228, .5) calc(var(--h) - 2px),
-      var(--live) calc(var(--h) - 2px) var(--h),
-      rgba(0, 0, 0, .45) var(--h));
-  }
-  .ch .pct {
-    display: grid; place-items: center;
-    font-size: 11px; font-weight: 600; letter-spacing: .08em;
-    color: var(--ink);
-    text-shadow: 0 1px 6px #000;
-  }
-  .ch:not(.loading) .fill,
-  .ch:not(.loading) .pct { opacity: 0; }
-  .ch:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-  .ch .tally { height: 4px; background: #2a2a2f; transition: background .08s; }
-  .ch canvas {
-    display: block;
-    width: 100%;
-    aspect-ratio: var(--ar);
-    background: #000;
-    filter: grayscale(.9) brightness(.55);
-    transition: filter .25s;
-  }
-  .ch:hover canvas { filter: grayscale(.4) brightness(.8); }
-  .ch.live canvas { filter: none; }
-  .ch.live { box-shadow: 0 0 0 2px var(--live); }
-  .ch.live .tally { background: var(--live); box-shadow: 0 0 16px 2px var(--live); }
-  .ch.pinned { box-shadow: 0 0 0 2px var(--solo); }
-  .ch.pinned .tally { background: var(--solo); box-shadow: 0 0 16px 2px var(--solo); }
-  .ch .meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 6px;
-    padding: 8px 10px 9px;
-  }
-  .ch .n {
-    font-family: 'Big Shoulders Display', sans-serif;
-    font-weight: 900;
-    font-size: clamp(20px, 3vw, 30px);
-    line-height: 1;
-    color: var(--mute);
-  }
-  .ch.live .n { color: var(--ink); }
-  .ch .name {
-    font-size: 10px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--mute);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ch .badge {
-    position: absolute; top: 10px; right: 8px;
-    font-size: 9px; font-weight: 600;
-    letter-spacing: .14em;
-    background: var(--solo); color: #000;
-    padding: 2px 5px;
-    opacity: 0;
-  }
-  .ch.pinned .badge { opacity: 1; }
-
-  /* ---------- controles ---------- */
-  .controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px 16px;
-    flex-wrap: wrap;
-    width: min(100%, 920px);
-    margin: 16px auto 0;
-  }
-  .btn {
-    appearance: none;
-    font: inherit;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--ink);
-    background: transparent;
-    border: 1px solid var(--line);
-    border-radius: 2px;
-    padding: 10px 14px;
-    cursor: pointer;
-    display: inline-flex; align-items: center; gap: 8px;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .btn:hover { border-color: var(--mute); }
-  .btn.on { background: var(--live); border-color: var(--live); color: #000; }
-  .btn[hidden] { display: none; }
-  .hint { color: var(--mute); font-size: 11px; flex: 1 1 220px; text-align: center; }
-
-  footer {
-    width: min(100%, 920px);
-    margin: 36px auto 0;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-    font-size: 11px; color: var(--mute);
-  }
-  kbd {
-    font: inherit; font-size: 10px;
-    border: 1px solid var(--line); border-radius: 2px;
-    padding: 1px 5px; color: var(--ink);
-  }
-
-  /* pantalla completa: la pantalla ocupa todo lo visible, sea cual sea la forma del móvil */
-  .stage.fake-fs {
+  /* pantalla completa: el clip ocupa todo lo visible, sea cual sea la forma del móvil */
+  .screen.fake-fs {
     position: fixed;
     z-index: 100;
     top: 0; left: 0;
@@ -345,14 +124,15 @@
     width: 100dvw;
     height: 100vh;
     height: 100dvh;
-    margin: 0;
     aspect-ratio: auto;
     border-radius: 0;
+    cursor: zoom-out;
   }
-  .stage.fake-fs video { object-fit: contain; }
+  .screen.fake-fs video { object-fit: contain; }
+  .screen.fake-fs .clip-n { display: none; }
   /* con el móvil en vertical, el vídeo se gira para verse en horizontal */
   @media (orientation: portrait) {
-    .stage.fake-fs {
+    .screen.fake-fs {
       top: 50%; left: 50%;
       width: 100vh;
       width: 100dvh;
@@ -377,175 +157,30 @@
     font: inherit; font-size: 18px;
     cursor: pointer;
   }
-  .stage.fake-fs .fs-close { display: grid; }
-  .stage.fake-fs [data-el="tc"] { margin-right: 48px; }
+  .screen.fake-fs .fs-close { display: grid; }
 
-  /* ---------- aviso de material de muestra ---------- */
-  .note {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 14px 18px;
-    background: var(--panel);
-    border-left: 3px solid var(--live);
-    border-radius: 2px;
-    color: var(--mute);
-  }
-  .note b { color: var(--ink); font-weight: 600; }
-
-  /* ---------- bloques de formato ---------- */
-  .proposal { padding-top: clamp(28px, 5vw, 56px); }
-  .proposal + .proposal { margin-top: clamp(28px, 5vw, 56px); border-top: 1px solid var(--line); }
-  .p-head {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    gap: 10px 32px; flex-wrap: wrap;
-    margin-bottom: clamp(14px, 2.5vw, 22px);
-  }
-  .p-head h2 {
-    font-family: 'Big Shoulders Display', sans-serif;
-    font-weight: 900;
-    font-size: clamp(32px, 5vw, 56px);
-    line-height: .9;
-    text-transform: uppercase;
-    margin-top: 6px;
-  }
-  .p-head h2 span { color: var(--live); }
-  .p-head p { max-width: 46ch; color: var(--mute); }
-  .deck { grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); }
-
-  /* ---------- contacto ---------- */
-  .contact {
-    margin-top: clamp(36px, 6vw, 64px);
-    padding-top: clamp(28px, 5vw, 56px);
+  footer {
+    margin-top: clamp(20px, 4vw, 36px);
+    padding-top: 14px;
     border-top: 1px solid var(--line);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-    gap: 20px 32px;
-    align-items: end;
+    display: flex; gap: 8px 24px; flex-wrap: wrap;
+    font-size: 12px; color: var(--mute);
   }
-  .contact h2 {
-    font-family: 'Big Shoulders Display', sans-serif;
-    font-weight: 900;
-    font-size: clamp(40px, 7vw, 80px);
-    line-height: .85;
-    text-transform: uppercase;
-    margin-top: 6px;
-  }
-  .contact-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .contact-link {
-    display: flex; flex-direction: column; gap: 6px;
-    padding: 16px 18px;
-    background: var(--panel);
-    box-shadow: 0 0 0 1px var(--line);
-    border-radius: 3px;
-    color: var(--ink);
-    text-decoration: none;
-    border-top: 3px solid var(--live);
-    transition: transform .15s ease, box-shadow .15s ease;
-  }
-  .contact-link:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px var(--live); }
-  .contact-link:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-  .contact-value {
-    font-size: clamp(14px, 1.6vw, 17px);
-    font-weight: 600;
-    overflow-wrap: anywhere;
-  }
-  .contact + footer { margin-top: clamp(28px, 5vw, 48px); }
-
-  @media (max-width: 760px) {
-    .contact { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 460px) {
-    .contact-links { grid-template-columns: 1fr; }
-  }
+  footer a { color: var(--ink); text-decoration: none; }
+  footer a:hover { color: var(--live); }
 
   @media (max-width: 560px) {
-    .ch .name { display: none; }
-    .ch .meta { padding: 6px 8px 7px; }
-    .ch .badge { top: 8px; right: 4px; font-size: 8px; }
-    .hud .hide-sm { display: none; }
-    .hint { order: 3; text-align: left; }
-  }
-  /* móvil en horizontal: la pantalla aprovecha casi todo el alto */
-  @media (orientation: landscape) and (max-height: 560px) {
-    .wrap { padding-top: 14px; }
-    header { margin-bottom: 14px; }
-    h1 { font-size: clamp(36px, 7vw, 56px); }
-    .p-head h2 { font-size: clamp(28px, 4.5vw, 40px); }
-    .stage {
-      width: min(100%, calc(84vh * (var(--ar))));
-      width: min(100%, calc(84svh * (var(--ar))));
-    }
-    .deck, .controls { width: min(100%, 720px); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .dot { animation: none; }
-    .stage.flash::after { animation: none; }
+    .gallery { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 <main class="wrap">
-
-  <header>
-    <div>
-      <div class="kicker">Muestra de trabajo · para MixTheVid</div>
-      <h1>Una muestra<br><em>de mi trabajo.</em></h1>
-    </div>
-    <p class="intro">
-      Una simulación del cambio entre vídeos que hace MixTheVid, montada con
-      material mío. Aquí los cortes son aleatorios;
-      en la app seguirían el pulso de la música. Toca un clip para verlo en solitario.
-    </p>
-  </header>
-
-  <aside class="note">
-    <b>Clips de muestra.</b> Los vídeos de esta página son de un proyecto anterior,
-    adaptados para funcionar en bucle, y están aquí solo como muestra de mi trabajo. No son loops para MixTheVid
-    ni una propuesta de contenido: los de la app se crearían desde cero, a medida.
-  </aside>
-
-  <section class="proposal" data-mixer="v1">
-    <div class="p-head">
-      <div>
-        <div class="kicker">Ejemplo 01</div>
-        <h2>Clips <span>distintos</span></h2>
-      </div>
-      <p>Varios clips independientes, con cortes de 0,5 a 4 s. Cada corte salta a otro clip, que continúa desde donde se quedó.</p>
-    </div>
-  </section>
-
-  <section class="proposal" data-mixer="v2">
-    <div class="p-head">
-      <div>
-        <div class="kicker">Ejemplo 02</div>
-        <h2>Un vídeo, <span>varios filtros</span></h2>
-      </div>
-      <p>El mismo clip con distintos tratamientos y cortes muy rápidos, de 0,15 a 0,6 s, que de vez en cuando frenan y aguantan 1,5 a 3 s. Todas las versiones se reproducen a la vez y sincronizadas, aunque no estén activas, así que cada corte cambia el filtro sin perder el movimiento.</p>
-    </div>
-  </section>
-
-  <section class="contact" aria-label="Contacto">
-    <div>
-      <h2>Contacto</h2>
-    </div>
-    <div class="contact-links">
-      <a class="contact-link" href="tel:+34661636377">
-        <span class="kicker">Teléfono</span>
-        <span class="contact-value">661 63 63 77</span>
-      </a>
-      <a class="contact-link" href="mailto:andipl2323@gmail.com">
-        <span class="kicker">Email</span>
-        <span class="contact-value">andipl2323@gmail.com</span>
-      </a>
-    </div>
-  </section>
-
+  <section class="gallery" aria-label="Clips"></section>
   <footer>
-    <span>Atajos: <kbd>1</kbd>–<kbd>5</kbd> fijar clip · <kbd>0</kbd> aleatorio · <kbd>F</kbd> pantalla completa</span>
-    <span>Clips de muestra de un proyecto anterior · en la app los cortes irían al ritmo de la música</span>
+    <a href="tel:+34661636377">661 63 63 77</a>
+    <a href="mailto:andipl2323@gmail.com">andipl2323@gmail.com</a>
   </footer>
-
 </main>
 
 <script>
@@ -555,29 +190,13 @@
   // para que el navegador no siga mostrando la copia antigua que tiene guardada.
   const VIDEO_VERSION = 11;
 
-  const PROPOSALS = {
-    v1: {
-      srcs: [
-        'propuesta loops/web/cara video.mp4',
-        'propuesta loops/web/caras.mp4',
-        'propuesta loops/web/fondo.mp4',
-        'propuesta loops/web/sombra.mp4',
-        'propuesta loops/web/playa.mp4',
-      ],
-    },
-    v2: {
-      sync: true,
-      minCut: 150, maxCut: 600,
-      // de vez en cuando frena: uno de cada seis cortes aguanta bastante más
-      holdChance: 1 / 6, minHold: 1500, maxHold: 3000,
-      srcs: [
-        'propuesta loops/web/v2/vasca 1.mp4',
-        'propuesta loops/web/v2/vasca2.mp4',
-        'propuesta loops/web/v2/vasca3.mp4',
-      ],
-    },
-  };
-  const SOFT_DRIFT = 0.03, HARD_DRIFT = 1;
+  const CLIPS = [
+    'propuesta loops/web/cara video.mp4',
+    'propuesta loops/web/caras.mp4',
+    'propuesta loops/web/fondo.mp4',
+    'propuesta loops/web/sombra.mp4',
+    'propuesta loops/web/playa.mp4',
+  ];
 
   // En móviles se usan las versiones ligeras ("propuesta loops/web/movil").
   const LIGHT = matchMedia('(pointer: coarse)').matches;
@@ -589,16 +208,16 @@
 
   // Cada clip se descarga entero antes de usarlo, así nunca se queda parado esperando
   // datos a mitad de reproducción. Se bajan de uno en uno para que cada uno llegue
-  // cuanto antes, y primero los de la propuesta que está en pantalla.
+  // cuanto antes, y primero los que están a la vista.
   // Si la descarga falla, ese clip se reproduce directamente del servidor.
   const pending = [];
   let busy = false, visibleKnown = false;  // no se empieza hasta saber qué se ve
-  function fetchClip(src, isActive, onProgress) {
-    return new Promise(resolve => { pending.push({ src, isActive, onProgress, resolve }); pump(); });
+  function fetchClip(src, isVisible, onProgress) {
+    return new Promise(resolve => { pending.push({ src, isVisible, onProgress, resolve }); pump(); });
   }
   function pump() {
     if (busy || !visibleKnown || !pending.length) return;
-    const k = Math.max(0, pending.findIndex(job => job.isActive()));
+    const k = Math.max(0, pending.findIndex(job => job.isVisible()));
     const { src, onProgress, resolve } = pending.splice(k, 1)[0];
     const url = videoUrl(src);
     busy = true;
@@ -626,367 +245,114 @@
   }
 
   const pad = n => String(n).padStart(2, '0');
+  const gallery = document.querySelector('.gallery');
+  const nativeFsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
 
-  const TEMPLATE = `
-    <div class="stage" aria-label="Resultado en directo">
-      <div class="hud">
-        <div class="hud-row">
-          <span class="tag"><span class="dot"></span><span data-el="mode">Desfijado</span></span>
-          <span class="tag tc hide-sm" data-el="tc">00:00:00</span>
-        </div>
-        <div class="hud-row bottom">
-          <div class="bignum" data-el="bignum">01</div>
-          <span class="tag tc" data-el="next">—</span>
-        </div>
-      </div>
-      <div class="meter"><i data-el="meter"></i></div>
-      <button class="gate" data-el="gate" type="button"><span>▶ Reproducir</span></button>
-    </div>
-    <div class="deck" role="group" aria-label="Clips"></div>
-    <div class="controls">
-      <button class="btn on" data-el="auto" type="button">↻ Aleatorio</button>
-      <span class="hint">Toca un clip para fijarlo · vuelve a tocarlo para soltarlo</span>
-      <button class="btn" data-el="fs" type="button">⛶ Pantalla completa</button>
-    </div>
-`;
+  function createClip(src, i) {
+    const fig = document.createElement('figure');
+    fig.className = 'clip loading';
+    fig.innerHTML = `<div class="screen" role="button" tabindex="0" aria-label="Clip ${pad(i + 1)}, ver a pantalla completa">
+        <div class="fill"></div><span class="pct">0 %</span>
+        <span class="clip-n">${pad(i + 1)}</span>
+        <button class="gate" type="button"><span>▶ Reproducir</span></button>
+        <button class="fs-close" type="button" aria-label="Salir de pantalla completa">✕</button>
+      </div>`;
+    gallery.appendChild(fig);
+    const screen = fig.querySelector('.screen');
+    const gate = fig.querySelector('.gate');
+    const pct = fig.querySelector('.pct');
 
-  function createMixer(section, { srcs, sync = false, minCut = 500, maxCut = 4000, holdChance = 0, minHold = 0, maxHold = 0 }) {
-    section.insertAdjacentHTML('beforeend', TEMPLATE);
-    const el = name => section.querySelector(`[data-el="${name}"]`);
-    const stage = section.querySelector('.stage');
-    const deck = section.querySelector('.deck');
-    const ui = {
-      mode: el('mode'), tc: el('tc'), bignum: el('bignum'), next: el('next'),
-      meter: el('meter'), gate: el('gate'), auto: el('auto'), fs: el('fs'),
-    };
-    deck.style.setProperty('--cols', srcs.length);
-
-    // Con clips distintos solo se reproduce el visible: decodificar cinco a la vez
-    // atasca el navegador. Al volver a un clip sigue desde donde se quedó, sin saltos.
-    // Con filtros (sync) se reproducen todos a la vez para que sigan sincronizados.
-    const vids = srcs.map(src => {
-      const v = document.createElement('video');
-      v.poster = posterUrl(src);
-      v.muted = true; v.loop = true; v.playsInline = true;
-      v.preload = 'auto';
-      v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-      stage.prepend(v);
-      return v;
-    });
-    vids[0].addEventListener('loadedmetadata', () => {
-      const { videoWidth: w, videoHeight: h } = vids[0];
-      if (w && h) section.style.setProperty('--ar', `${w} / ${h}`);
+    const v = document.createElement('video');
+    v.poster = posterUrl(src);
+    v.muted = true; v.loop = true; v.playsInline = true;
+    v.preload = 'auto';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    screen.prepend(v);
+    v.addEventListener('loadedmetadata', () => {
+      if (v.videoWidth && v.videoHeight) fig.style.setProperty('--ar', `${v.videoWidth} / ${v.videoHeight}`);
     }, { once: true });
 
-    const chans = srcs.map((_, i) => {
-      const b = document.createElement('button');
-      b.className = 'ch loading'; b.type = 'button';
-      b.setAttribute('aria-pressed', 'false');
-      b.setAttribute('aria-label', `Clip ${pad(i + 1)}`);
-      b.innerHTML = `<div class="tally"></div><canvas></canvas>
-        <div class="fill"></div><span class="pct">0 %</span><span class="badge">SOLO</span>
-        <div class="meta"><span class="n">${pad(i + 1)}</span></div>`;
-      b.addEventListener('click', () => pin(i));
-      deck.appendChild(b);
-      return b;
-    });
-    const canvases = chans.map(c => c.querySelector('canvas'));
-    const pcts = chans.map(c => c.querySelector('.pct'));
-    const ctxs = canvases.map(c => c.getContext('2d'));
+    let visible = false, ready = false;
+    const isFs = () => screen.classList.contains('fake-fs');
 
-    const posters = srcs.map(src => Object.assign(new Image(), { src: posterUrl(src) }));
-
-    // Al cambiar de tamaño el lienzo se borra, así que todas las miniaturas se repintan.
-    new ResizeObserver(() => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvases.forEach(c => {
-        c.width = Math.max(1, Math.round(c.clientWidth * dpr));
-        c.height = Math.max(1, Math.round(c.clientHeight * dpr));
-      });
-      vids.forEach(v => { v._thumb = null; });
-    }).observe(deck);
-
-    function drawCover(ctx, img, iw, ih) {
-      const { width: w, height: h } = ctx.canvas;
-      const s = Math.max(w / iw, h / ih), dw = iw * s, dh = ih * s;
-      ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    }
-
-    // Miniatura: el vídeo si ya tiene imagen (los pausados solo se pintan una vez);
-    // si no, su portada.
-    function drawThumb(k) {
-      const v = vids[k], p = posters[k];
-      if (v.videoWidth && v.readyState >= 2) {
-        if (v.paused && v._thumb === 'video') return;
-        v._thumb = 'video';
-        drawCover(ctxs[k], v, v.videoWidth, v.videoHeight);
-      } else if (!v._thumb && p.complete && p.naturalWidth) {
-        v._thumb = 'poster';
-        drawCover(ctxs[k], p, p.naturalWidth, p.naturalHeight);
-      }
-    }
-
-    // ---------- estado ----------
-    let cur = -1, pinned = null, nextAt = 0, segDur = 1;
-    let active = false, started = false, frame = 0;
-    const ready = srcs.map(() => false);
-    const loaded = srcs.map(() => 0);  // cuánto lleva descargado cada clip, de 0 a 1
-    const t0 = performance.now();
-
-    function progress(i, p) {
-      loaded[i] = p;
-      chans[i].style.setProperty('--load', p.toFixed(3));
-      pcts[i].textContent = `${Math.floor(p * 100)} %`;
-    }
-
-    function flash() {
-      stage.classList.remove('flash');
-      void stage.offsetWidth;
-      stage.classList.add('flash');
-    }
-
-    function cut(i, now) {
-      if (i === cur) return;
-      if (!sync && active) vids[i].play().catch(checkBlocked);
-      if (cur >= 0) {
-        vids[cur].classList.remove('live'); chans[cur].classList.remove('live');
-        if (!sync) vids[cur].pause();
-      }
-      cur = i;
-      vids[i].classList.add('live');
-      chans[i].classList.add('live');
-      ui.bignum.textContent = pad(i + 1);
-      flash();
-    }
-
-    function schedule(now) {
-      const hold = Math.random() < holdChance;
-      segDur = hold ? minHold + Math.random() * (maxHold - minHold)
-                    : minCut + Math.random() * (maxCut - minCut);
-      nextAt = now + segDur;
-    }
-
-    // Solo entre los clips ya descargados.
-    function randomOther() {
-      const options = srcs.map((_, k) => k).filter(k => ready[k] && k !== cur);
-      return options.length ? options[Math.floor(Math.random() * options.length)] : cur;
-    }
-
-    function renderMode() {
-      const solo = pinned !== null;
-      stage.classList.toggle('solo', solo);
-      ui.mode.textContent = solo ? 'Fijado' : 'Desfijado';
-      ui.auto.classList.toggle('on', !solo);
-      chans.forEach((c, k) => {
-        c.classList.toggle('pinned', k === pinned);
-        c.setAttribute('aria-pressed', String(k === pinned));
-      });
-    }
-
-    function pin(i) {
-      if (i < 0 || i >= srcs.length || !ready[i]) return;
-      if (pinned === i) return unpin();
-      pinned = i;
-      cut(i, performance.now());
-      renderMode();
-    }
-
-    function unpin() {
-      if (pinned === null) return;
-      pinned = null;
-      schedule(performance.now());
-      renderMode();
-    }
-
-    // ---------- sincronía (propuesta con filtros) ----------
-    // Todos siguen al primer vídeo. Saltar con currentTime congela el vídeo mientras
-    // decodifica, así que las desviaciones pequeñas se corrigen acelerando o frenando
-    // un poco; solo se salta si se ha ido más de un segundo.
-    function syncVideos() {
-      const master = vids[0];
-      const d = master.duration;
-      if (!d || master.paused || master.readyState < 3) return;
-      const now = performance.now();
-      for (let k = 1; k < vids.length; k++) {
-        const v = vids[k];
-        if (v.readyState < 3 || v.seeking) continue;
-        let diff = v.currentTime - master.currentTime;
-        if (diff > d / 2) diff -= d;
-        else if (diff < -d / 2) diff += d;
-        if (Math.abs(diff) > HARD_DRIFT && now - (v._lastSeek || 0) > 3000) {
-          v._lastSeek = now;
-          v.playbackRate = 1;
-          v.currentTime = (master.currentTime + 0.2) % d;
-        } else if (Math.abs(diff) > SOFT_DRIFT) {
-          v.playbackRate = Math.min(1.15, Math.max(0.85, 1 - diff));
-        } else if (v.playbackRate !== 1) {
-          v.playbackRate = 1;
-        }
-      }
-    }
-
-    function tick(now) {
-      if (!active) return;
-      if (!started) {
-        // La barra de la pantalla muestra lo que falta para arrancar: el primer clip,
-        // o los tres juntos en la propuesta con filtros.
-        const p = sync ? loaded.reduce((a, b) => a + b, 0) / srcs.length : loaded[cur];
-        ui.meter.style.setProperty('--p', p.toFixed(3));
-        ui.next.textContent = `Cargando ${Math.floor(p * 100)} %`;
-        vids.forEach((_, k) => drawThumb(k));
-        return;
-      }
-      if (pinned === null && now >= nextAt) {
-        cut(randomOther(), now);
-        schedule(now);
-      }
-
-      if (pinned === null) {
-        const left = Math.max(0, nextAt - now);
-        ui.meter.style.setProperty('--p', (left / segDur).toFixed(4));
-        ui.next.textContent = `Corte en ${(left / 1000).toFixed(1).replace('.', ',')} s`;
-      } else {
-        ui.meter.style.setProperty('--p', 1);
-        ui.next.textContent = 'Fijado';
-      }
-
-      const ms = now - t0;
-      ui.tc.textContent = `${pad(Math.floor(ms / 60000))}:${pad(Math.floor(ms / 1000) % 60)}:${pad(Math.floor(ms / 40) % 25)}`;
-
-      if (frame++ % 2 === 0) vids.forEach((_, k) => drawThumb(k));
-      if (sync && frame % 15 === 0) syncVideos();
-    }
-
-    // ---------- reproducción ----------
-    const playing = () => sync ? vids : cur >= 0 ? [vids[cur]] : [];
-    const playAll = () => Promise.all(playing().map(v => v.play()));
     // Solo pedimos un toque si el navegador ha bloqueado de verdad la reproducción
     // (p. ej. modo ahorro de batería en iPhone).
     function checkBlocked() {
-      setTimeout(() => {
-        ui.gate.classList.toggle('show', active && playing().some(v => v.paused));
-      }, 600);
+      setTimeout(() => gate.classList.toggle('show', ready && (visible || isFs()) && v.paused), 600);
     }
-    vids.forEach(v => v.addEventListener('playing', checkBlocked));
-    ui.gate.addEventListener('click', () => { playAll().catch(() => {}).finally(checkBlocked); });
+    v.addEventListener('playing', checkBlocked);
+    gate.addEventListener('click', e => {
+      e.stopPropagation();
+      v.play().catch(() => {}).finally(checkBlocked);
+    });
 
-    // Solo corre la propuesta que está en pantalla, para no saturar el móvil.
-    function setActive(on) {
-      if (on === active) return;
-      active = on;
-      if (on) {
-        if (started) playAll().catch(checkBlocked);
-        schedule(performance.now());
-      } else {
-        vids.forEach(v => v.pause());
-        ui.gate.classList.remove('show');
-      }
+    // Solo se reproducen los clips a la vista, para no saturar el móvil;
+    // al volver a uno sigue desde donde se quedó.
+    function update() {
+      if (!ready) return;
+      if (visible || isFs()) v.play().catch(checkBlocked);
+      else { v.pause(); gate.classList.remove('show'); }
     }
+    function setVisible(on) { visible = on; update(); }
 
-    // Mientras carga se ve la portada del primer clip. Arranca con el primer clip
-    // descargado; con filtros espera a tenerlos todos, porque se reproducen a la vez.
-    cut(sync ? Math.floor(Math.random() * srcs.length) : 0, performance.now());
-    stage.classList.add('loading');
-    function start(i) {
-      started = true;
-      stage.classList.remove('loading');
-      if (!sync) cut(i, performance.now());
-      schedule(performance.now());
-      if (active) playAll().catch(checkBlocked);
-    }
-    srcs.forEach((src, i) => fetchClip(src, () => active, p => progress(i, p)).then(url => {
-      vids[i].src = url;
-      ready[i] = true;
-      progress(i, 1);
-      chans[i].classList.remove('loading');
-      if (!started && (!sync || ready.every(Boolean))) start(i);
-    }));
-    renderMode();
+    fetchClip(src, () => visible, p => {
+      fig.style.setProperty('--load', p.toFixed(3));
+      pct.textContent = `${Math.floor(p * 100)} %`;
+    }).then(url => {
+      v.src = url;
+      ready = true;
+      fig.classList.remove('loading');
+      update();
+    });
 
-    // ---------- controles ----------
-    ui.auto.addEventListener('click', unpin);
-
-    // Pantalla completa: la pantalla se fija con CSS ocupando todo (girada si el móvil
+    // Pantalla completa: el clip se fija con CSS ocupando todo (girado si el móvil
     // está en vertical), y además se pide la pantalla completa del navegador para
     // esconder sus barras y, en Android, girar a horizontal. Así se ve igual en
     // cualquier móvil, también en los que no la conceden (iPhone).
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'fs-close'; closeBtn.type = 'button';
-    closeBtn.setAttribute('aria-label', 'Salir de pantalla completa');
-    closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', () => exitFs());
-    stage.appendChild(closeBtn);
-
-    const nativeFsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
-    const isFakeFs = () => stage.classList.contains('fake-fs');
-
     function fakeFs(on) {
-      stage.classList.toggle('fake-fs', on);
+      screen.classList.toggle('fake-fs', on);
       document.body.classList.toggle('fs-lock', on);
+      update();
     }
-
     function enterFs() {
       fakeFs(true);
       const root = document.documentElement;
       const req = root.requestFullscreen || root.webkitRequestFullscreen;
       try {
         const p = req && req.call(root);
-        if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {}), () => {});
+        if (p && p.then) p.then(() => window.screen.orientation?.lock?.('landscape').catch(() => {}), () => {});
       } catch (_) {}
     }
-
     function exitFs() {
       fakeFs(false);
       if (nativeFsEl()) {
-        try { screen.orientation?.unlock?.(); } catch (_) {}
+        try { window.screen.orientation?.unlock?.(); } catch (_) {}
         (document.exitFullscreen || document.webkitExitFullscreen).call(document);
       }
     }
+    screen.addEventListener('click', () => (isFs() ? exitFs() : enterFs()));
+    screen.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); screen.click(); }
+    });
+    fig.querySelector('.fs-close').addEventListener('click', e => { e.stopPropagation(); exitFs(); });
 
-    // Si se sale con el botón atrás o Esc del navegador, también se cierra la nuestra.
-    const onFsChange = () => { if (!nativeFsEl() && isFakeFs()) fakeFs(false); };
-    document.addEventListener('fullscreenchange', onFsChange);
-    document.addEventListener('webkitfullscreenchange', onFsChange);
-
-    const toggleFs = () => (isFakeFs() ? exitFs() : enterFs());
-    ui.fs.addEventListener('click', toggleFs);
-
-    return { section, stage, tick, setActive, pin, unpin, toggleFs, exitFs, isFakeFs };
+    return { screen, setVisible, isFs, exitFs };
   }
 
-  const mixers = [...document.querySelectorAll('[data-mixer]')]
-    .map(sec => createMixer(sec, PROPOSALS[sec.dataset.mixer]));
+  const clips = CLIPS.map(createClip);
 
-  // Solo se reproduce la propuesta cuya pantalla está a la vista;
-  // la más visible es la que recibe los atajos de teclado.
-  let focused = mixers[0];
-  const ratios = new Map();
+  // Si se sale con el botón atrás o Esc del navegador, también se cierra la nuestra.
+  const exitAll = () => clips.forEach(c => c.isFs() && c.exitFs());
+  const onFsChange = () => { if (!nativeFsEl()) exitAll(); };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') exitAll(); });
+
   const io = new IntersectionObserver(entries => {
-    entries.forEach(e => ratios.set(e.target, e.isIntersecting ? e.intersectionRatio : 0));
-    let best = 0;
-    mixers.forEach(m => {
-      const r = ratios.get(m.stage) || 0;
-      m.setActive(r > 0);
-      if (r > best) { best = r; focused = m; }
-    });
+    entries.forEach(e => clips.find(c => c.screen === e.target).setVisible(e.isIntersecting));
     if (!visibleKnown) { visibleKnown = true; pump(); }
-  }, { threshold: [0, .1, .25, .5, .75, 1] });
-  mixers.forEach(m => io.observe(m.stage));
-  mixers.forEach(m => m.section.addEventListener('pointerdown', () => { focused = m; }));
-
-  (function loop(now) {
-    mixers.forEach(m => m.tick(now));
-    requestAnimationFrame(loop);
-  })(performance.now());
-
-  document.addEventListener('keydown', e => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= 9) focused.pin(n - 1);
-    else if (e.key === 'Escape' && mixers.some(m => m.isFakeFs())) mixers.forEach(m => m.exitFs());
-    else if (e.key === '0' || e.key === 'Escape') focused.unpin();
-    else if (e.key === 'f' || e.key === 'F') focused.toggleFs();
-  });
+  }, { threshold: 0.15 });
+  clips.forEach(c => io.observe(c.screen));
 })();
 </script>
 </body>
